@@ -1,15 +1,44 @@
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const pageTitles = {
   '/': 'Dashboard',
   '/boxes': 'Kutu Yönetimi',
   '/staff': 'Personel Yönetimi',
   '/subscription': 'Abonelik & Finans',
+  '/organizations': 'Kurum Yönetimi',
 };
 
 const Navbar = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const title = pageTitles[location.pathname] || 'Sayfa';
+
+  // Format user name and initials
+  const displayName = user?.displayName || user?.email || 'Kullanıcı';
+  const getInitials = (name) => {
+    if (!name) return 'K';
+    // If it's an email, return the first letter
+    if (name.includes('@')) return name.charAt(0).toUpperCase();
+    
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+  const initials = getInitials(displayName);
+
+  // Format display role
+  const getDisplayRole = (role) => {
+    switch(role) {
+      case 'super_admin': return 'Süper Yönetici';
+      case 'admin': return 'Kurum Yöneticisi';
+      case 'saha_gorevlisi': return 'Saha Personeli';
+      default: return 'Personel';
+    }
+  };
+  const displayRole = getDisplayRole(user?.rol);
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-surface-200 flex items-center justify-between px-6">
@@ -37,11 +66,11 @@ const Navbar = () => {
         {/* User Avatar */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-            EY
+            {initials}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium text-surface-700">Elif Yıldız</p>
-            <p className="text-xs text-surface-400">Yönetici</p>
+          <div className="hidden sm:block text-left">
+            <p className="text-sm font-medium text-surface-700 truncate max-w-[150px]">{displayName}</p>
+            <p className="text-xs text-surface-400">{displayRole}</p>
           </div>
           <svg className="w-4 h-4 text-surface-400" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />

@@ -286,7 +286,7 @@ const BoxesPage = () => {
                     <td className="px-6 py-4 text-sm text-surface-600">{kutu.atananPersonel}</td>
                     <td className="px-6 py-4 text-sm text-surface-500">{kutu.sonToplama}</td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors cursor-pointer">
+                      <button onClick={() => alert('Geliştirme aşamasında')} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors cursor-pointer">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                         </svg>

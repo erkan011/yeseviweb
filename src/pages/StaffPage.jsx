@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { staff } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { useAuth } from '../context/AuthContext';
 
 // ---------- Add Staff Modal ----------
 const AddStaffModal = ({ isOpen, onClose }) => {
@@ -87,16 +89,60 @@ const AddStaffModal = ({ isOpen, onClose }) => {
 //  STAFF PAGE
 // ============================================================
 const StaffPage = () => {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [filterRol, setFilterRol] = useState('Tümü');
   const [showModal, setShowModal] = useState(false);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      if (!user?.kurum_id) return;
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, 'users'), 
+          where('kurum_id', '==', user.kurum_id)
+        );
+        const snapshot = await getDocs(q);
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setStaff(items);
+      } catch (error) {
+        console.error("Personeller yüklenirken hata:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStaff();
+  }, [user]);
+
+  const handleDelete = async (staffId) => {
+    if (!window.confirm("Bu personeli silmek istediğinize emin misiniz?")) return;
+    try {
+      await deleteDoc(doc(db, 'users', staffId));
+      setStaff(prev => prev.filter(s => s.id !== staffId));
+      // Optional: alert or toast success
+    } catch (e) {
+      console.error("Personel silinemedi:", e);
+      alert("Silme işlemi başarısız.");
+    }
+  };
 
   const filteredStaff = staff.filter((s) => {
+    const ad = s.isim || s.ad || '';
+    const email = s.email || '';
+    
     const matchesSearch =
-      s.ad.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase()) ||
-      s.id.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = filterRol === 'Tümü' || s.rol === filterRol;
+      ad.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase());
+      
+    // Rol mapping adjustment for mapping UI to DB values if needed
+    let sRol = s.rol || 'Personel';
+    if(s.rol === 'admin') sRol = 'Yönetici';
+    if(s.rol === 'saha_gorevlisi') sRol = 'Saha Personeli';
+
+    const matchesRole = filterRol === 'Tümü' || sRol.includes(filterRol) || filterRol.includes(sRol);
     return matchesSearch && matchesRole;
   });
 
@@ -154,12 +200,12 @@ const StaffPage = () => {
         </div>
         <div className="bg-white rounded-2xl border border-surface-200 p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-xl bg-green-50 ring-1 ring-green-100 flex items-center justify-center text-green-600">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{staff.filter(s => s.durum === 'Aktif').length}</p>
+            <p className="text-2xl font-bold text-surface-900">{staff.filter(s => (s.durum !== 'Pasif')).length}</p>
             <p className="text-sm text-surface-400">Aktif Personel</p>
           </div>
         </div>
@@ -170,11 +216,20 @@ const StaffPage = () => {
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{staff.reduce((t, s) => t + s.atananKutu, 0)}</p>
+            <p className="text-2xl font-bold text-surface-900">{staff.reduce((t, s) => t + (s.atananKutu || 0), 0)}</p>
             <p className="text-sm text-surface-400">Atanmış Kutu</p>
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <svg className="animate-spin h-8 w-8 text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="bg-white rounded-2xl border border-surface-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -218,38 +273,44 @@ const StaffPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
-              {filteredStaff.map((p) => (
+              {!loading && filteredStaff.map((p) => {
+                const sName = p.isim || p.ad || 'Bilinmiyor';
+                let sRol = p.rol || 'Personel';
+                if(sRol === 'admin') sRol = 'Yönetici';
+                if(sRol === 'saha_gorevlisi') sRol = 'Saha Personeli';
+                
+                return (
                 <tr key={p.id} className="hover:bg-surface-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                        {p.ad.split(' ').map(n => n[0]).join('')}
+                        {sName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-surface-800">{p.ad}</p>
-                        <p className="text-xs text-surface-400">{p.id}</p>
+                        <p className="text-sm font-medium text-surface-800">{sName}</p>
+                        <p className="text-xs text-surface-400">{p.id.substring(0, 8)}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-surface-700">{p.email}</p>
-                    <p className="text-xs text-surface-400">{p.telefon}</p>
+                    <p className="text-xs text-surface-400">{p.telefon || '-'}</p>
                   </td>
-                  <td className="px-6 py-4">{rolBadge(p.rol)}</td>
-                  <td className="px-6 py-4">{durumBadge(p.durum)}</td>
+                  <td className="px-6 py-4">{rolBadge(sRol)}</td>
+                  <td className="px-6 py-4">{durumBadge(p.durum || 'Aktif')}</td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-surface-700">{p.atananKutu}</span>
+                    <span className="text-sm font-medium text-surface-700">{p.atananKutu || 0}</span>
                     <span className="text-xs text-surface-400 ml-1">kutu</span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-surface-500">{p.sonAktivite}</td>
+                  <td className="px-6 py-4 text-sm text-surface-500">{p.sonAktivite || '—'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button className="p-1.5 rounded-lg text-surface-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer" title="Düzenle">
+                      <button onClick={() => alert('Düzenleme yakında eklenecek')} className="p-1.5 rounded-lg text-surface-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer" title="Düzenle">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                         </svg>
                       </button>
-                      <button className="p-1.5 rounded-lg text-surface-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer" title="Sil">
+                      <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer" title="Sil">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                         </svg>
@@ -257,7 +318,7 @@ const StaffPage = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
