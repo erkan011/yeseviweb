@@ -18,16 +18,16 @@ const StatCard = ({ title, value, suffix, change, changeType, icon, color }) => 
   const c = colorMap[color] || colorMap.green;
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-200 p-6 hover:shadow-lg transition-all duration-300 group">
+    <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-surface-500">{title}</p>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-surface-900">{value}</span>
-            {suffix && <span className="text-sm text-surface-400">{suffix}</span>}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-surface-500">{title}</p>
+          <div className="mt-1 sm:mt-2 flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-bold text-surface-900">{value}</span>
+            {suffix && <span className="text-xs sm:text-sm text-surface-400">{suffix}</span>}
           </div>
           {change !== undefined && (
-            <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${changeType === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <div className={`mt-1.5 sm:mt-2 inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${changeType === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
               {changeType === 'up' ? (
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" /></svg>
               ) : (
@@ -37,7 +37,7 @@ const StatCard = ({ title, value, suffix, change, changeType, icon, color }) => 
             </div>
           )}
         </div>
-        <div className={`w-12 h-12 rounded-xl ${c.bg} ring-1 ${c.ring} flex items-center justify-center ${c.icon} group-hover:scale-110 transition-transform duration-300`}>
+        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${c.bg} ring-1 ${c.ring} flex items-center justify-center ${c.icon} group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
       </div>
@@ -49,33 +49,33 @@ const StatCard = ({ title, value, suffix, change, changeType, icon, color }) => 
 const MiniBarChart = ({ data }) => {
   const max = data.length ? Math.max(...data.map(d => d.toplama)) : 100;
   return (
-    <div className="bg-white rounded-2xl border border-surface-200 p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h3 className="text-base font-semibold text-surface-800">Aylık Toplama</h3>
-          <p className="text-sm text-surface-400 mt-0.5">Son 6 ay</p>
+          <h3 className="text-sm sm:text-base font-semibold text-surface-800">Aylık Toplama</h3>
+          <p className="text-xs sm:text-sm text-surface-400 mt-0.5">Son 6 ay</p>
         </div>
-        <select className="text-xs border border-surface-200 rounded-lg px-3 py-1.5 text-surface-600 bg-surface-50 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <select className="text-xs border border-surface-200 rounded-lg px-2 sm:px-3 py-1.5 text-surface-600 bg-surface-50 focus:outline-none focus:ring-2 focus:ring-primary-500">
           <option>Son 6 ay</option>
           <option>Son 12 ay</option>
         </select>
       </div>
-      <div className="flex items-end gap-3 h-44">
+      <div className="flex items-end gap-1.5 sm:gap-3 h-36 sm:h-44">
         {data.length === 0 ? (
           <div className="flex w-full h-full items-center justify-center">
             <span className="text-sm text-surface-400">Veri bulunamadı.</span>
           </div>
         ) : (
           data.map((item, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-2">
-              <span className="text-xs font-semibold text-surface-700">{item.toplama}</span>
+            <div key={i} className="flex-1 flex flex-col items-center gap-1 sm:gap-2">
+              <span className="text-[10px] sm:text-xs font-semibold text-surface-700">{item.toplama}</span>
               <div className="w-full relative rounded-t-lg overflow-hidden bg-surface-100" style={{ height: '100%' }}>
                 <div
                   className="absolute bottom-0 w-full rounded-t-lg bg-gradient-to-t from-primary-600 to-primary-400 transition-all duration-700 hover:from-primary-700 hover:to-primary-500"
                   style={{ height: `${(item.toplama / max) * 100}%` }}
                 />
               </div>
-              <span className="text-xs text-surface-400 font-medium">{item.ay}</span>
+              <span className="text-[10px] sm:text-xs text-surface-400 font-medium">{item.ay}</span>
             </div>
           ))
         )}
@@ -99,33 +99,33 @@ const DonutChart = ({ data }) => {
   const gradient = `conic-gradient(${segments.join(', ')})`;
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-200 p-6">
-      <div className="mb-6">
-        <h3 className="text-base font-semibold text-surface-800">Kutu Durumları</h3>
-        <p className="text-sm text-surface-400 mt-0.5">Toplam {total} kutu</p>
+    <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-sm sm:text-base font-semibold text-surface-800">Kutu Durumları</h3>
+        <p className="text-xs sm:text-sm text-surface-400 mt-0.5">Toplam {total} kutu</p>
       </div>
-      <div className="flex items-center justify-center gap-8">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
         {/* Donut */}
-        <div className="relative w-36 h-36">
+        <div className="relative w-28 h-28 sm:w-36 sm:h-36">
           <div
             className="w-full h-full rounded-full transition-all duration-700"
             style={{ background: gradient }}
           />
-          <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center">
+          <div className="absolute inset-3 sm:inset-4 bg-white rounded-full flex items-center justify-center">
             <div className="text-center">
-              <span className="text-2xl font-bold text-surface-900">{total}</span>
+              <span className="text-xl sm:text-2xl font-bold text-surface-900">{total}</span>
               <p className="text-[10px] text-surface-400">Toplam</p>
             </div>
           </div>
         </div>
         {/* Legend */}
-        <div className="space-y-3">
+        <div className="flex flex-wrap justify-center sm:flex-col gap-2 sm:gap-3">
           {data.map((d, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.renk }} />
+            <div key={i} className="flex items-center gap-2 sm:gap-3">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: d.renk }} />
               <div>
-                <span className="text-sm font-medium text-surface-700">{d.durum}</span>
-                <span className="text-xs text-surface-400 ml-2">({d.sayi})</span>
+                <span className="text-xs sm:text-sm font-medium text-surface-700">{d.durum}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400 ml-1 sm:ml-2">({d.sayi})</span>
               </div>
             </div>
           ))}
@@ -168,9 +168,9 @@ const ActivityFeed = ({ activities }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-surface-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-base font-semibold text-surface-800">Son Aktiviteler</h3>
+    <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h3 className="text-sm sm:text-base font-semibold text-surface-800">Son Aktiviteler</h3>
         <button className="text-xs font-medium text-primary-600 hover:text-primary-700 cursor-pointer">
           Tümünü Gör →
         </button>
@@ -219,7 +219,10 @@ const DashboardPage = () => {
     let isMounted = true;
     
     const fetchData = async () => {
-      if (!user?.kurum_id) return;
+      if (!user?.kurum_id) {
+        if (isMounted) setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const [kutuData, personelData, aktiviteData, toplamaData] = await Promise.all([
@@ -287,19 +290,19 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+    <div className="space-y-4 sm:space-y-6 animate-[fadeIn_0.3s_ease-out]">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl p-6 text-white relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute right-16 bottom-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2" />
+      <div className="bg-gradient-to-r from-primary-600 to-primary-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-32 sm:w-48 h-32 sm:h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute right-16 bottom-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full translate-y-1/2" />
         <div className="relative z-10">
-          <h2 className="text-xl font-bold">Hoş Geldiniz, {userFirstName}! 👋</h2>
-          <p className="mt-1 text-primary-100 text-sm">İşte kurumunuzun bugünkü durumu</p>
+          <h2 className="text-lg sm:text-xl font-bold">Hoş Geldiniz, {userFirstName}! 👋</h2>
+          <p className="mt-1 text-primary-100 text-xs sm:text-sm">İşte kurumunuzun bugünkü durumu</p>
         </div>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Toplam Kutu"
           value={stats?.toplamKutu ?? 0}
@@ -338,7 +341,7 @@ const DashboardPage = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <MiniBarChart data={monthlyData ?? []} />
         <DonutChart data={boxStatus ?? []} />
       </div>

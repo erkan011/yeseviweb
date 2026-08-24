@@ -4,9 +4,16 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 
-export const loginWithEmail = (email, password) => {
+export const loginWithEmail = async (email, password, rememberMe = true) => {
+  await setPersistence(
+    auth,
+    rememberMe ? browserLocalPersistence : browserSessionPersistence
+  );
   return signInWithEmailAndPassword(auth, email, password);
 };
 

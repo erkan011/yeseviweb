@@ -1,83 +1,107 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
+import { createAdminUser } from '../services/authService';
 
 // ---------- Add Staff Modal ----------
-const AddStaffModal = ({ isOpen, onClose }) => {
+const AddStaffModal = ({ isOpen, onClose, user, onStaffAdded }) => {
+  const [formData, setFormData] = useState({
+    adSoyad: '', telefon: '', email: '', rol: 'saha_gorevlisi', durum: 'Aktif', sifre: ''
+  });
+  const [loading, setLoading] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    if(!formData.adSoyad || !formData.email || !formData.sifre) {
+       return alert("Lütfen gerekli alanları doldurun.");
+    }
+    // Aktif kullanıcının kurum kimliği yoksa (örneğin Super Admin hesabıysa), 
+    // test edilebilmesi için varsayılan bir kurum ID atıyoruz.
+    const activeKurumId = user?.kurum_id || 'merkez_kurum';
+
+    setLoading(true);
+    try {
+       const newUid = await createAdminUser(formData.email, formData.sifre);
+       await setDoc(doc(db, 'users', newUid), {
+         ad: formData.adSoyad,
+         isim: formData.adSoyad,
+         email: formData.email,
+         telefon: formData.telefon,
+         rol: formData.rol,
+         durum: formData.durum,
+         kurum_id: activeKurumId,
+         atananKutu: 0,
+         createdAt: new Date().toISOString()
+       });
+       onStaffAdded();
+       onClose();
+       setFormData({ adSoyad: '', telefon: '', email: '', rol: 'saha_gorevlisi', durum: 'Aktif', sifre: '' });
+    } catch(err) {
+       console.error(err);
+       alert("Personel eklenirken hata: " + err.message);
+    } finally {
+       setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-surface-900/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-[scaleIn_0.2s_ease-out]">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
           <h3 className="text-lg font-semibold text-surface-900">Yeni Personel Ekle</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 transition-colors cursor-pointer">
+          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 transition-colors cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-
-        {/* Body */}
         <div className="px-6 py-5 space-y-4">
-          {/* Row 1 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-surface-700">Ad Soyad</label>
-              <input type="text" placeholder="Ahmet Yılmaz" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+              <input value={formData.adSoyad} onChange={e => setFormData({...formData, adSoyad: e.target.value})} type="text" placeholder="Ahmet Yılmaz" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-surface-700">Telefon</label>
-              <input type="tel" placeholder="0532 111 2233" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+              <input value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} type="tel" placeholder="0532 111 2233" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
             </div>
           </div>
-
-          {/* Row 2 */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-surface-700">E-posta Adresi</label>
-            <input type="email" placeholder="ornek@yesevi.org" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+            <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} type="email" placeholder="ornek@yesevi.org" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
           </div>
-
-          {/* Row 3 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-surface-700">Rol</label>
-              <select className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
-                <option>Saha Personeli</option>
-                <option>Saha Sorumlusu</option>
-                <option>Yönetici</option>
+              <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                <option value="saha_gorevlisi">Saha Personeli</option>
+                <option value="saha_sorumlusu">Saha Sorumlusu</option>
+                <option value="admin">Yönetici</option>
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-surface-700">Durum</label>
-              <select className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
-                <option>Aktif</option>
-                <option>Pasif</option>
+              <select value={formData.durum} onChange={e => setFormData({...formData, durum: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                <option value="Aktif">Aktif</option>
+                <option value="Pasif">Pasif</option>
               </select>
             </div>
           </div>
-
-          {/* Row 4 - Password */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-surface-700">Geçici Şifre</label>
-            <input type="password" placeholder="••••••••" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+            <input value={formData.sifre} onChange={e => setFormData({...formData, sifre: e.target.value})} type="password" placeholder="••••••••" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
             <p className="text-xs text-surface-400">Personel ilk girişte şifresini değiştirecektir.</p>
           </div>
         </div>
-
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-100">
-          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-100 transition-colors cursor-pointer">
+          <button onClick={onClose} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-100 transition-colors cursor-pointer disabled:opacity-50">
             İptal
           </button>
-          <button className="px-5 py-2.5 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all cursor-pointer">
-            Personel Ekle
+          <button onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all cursor-pointer disabled:opacity-50">
+            {loading ? 'Ekleniyor...' : 'Personel Ekle'}
           </button>
         </div>
       </div>
@@ -96,24 +120,25 @@ const StaffPage = () => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchStaff = async () => {
+    const activeKurumId = user?.kurum_id || 'merkez_kurum';
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'users'), 
+        where('kurum_id', '==', activeKurumId)
+      );
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStaff(items);
+    } catch (error) {
+      console.error("Personeller yüklenirken hata:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStaff = async () => {
-      if (!user?.kurum_id) return;
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, 'users'), 
-          where('kurum_id', '==', user.kurum_id)
-        );
-        const snapshot = await getDocs(q);
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setStaff(items);
-      } catch (error) {
-        console.error("Personeller yüklenirken hata:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStaff();
   }, [user]);
 
@@ -200,7 +225,7 @@ const StaffPage = () => {
         </div>
         <div className="bg-white rounded-2xl border border-surface-200 p-5 flex items-center gap-4">
           <div className="w-11 h-11 rounded-xl bg-green-50 ring-1 ring-green-100 flex items-center justify-center text-green-600">
-            <svg className="w-5 h-5" fill="none" viewBox="0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
@@ -337,7 +362,7 @@ const StaffPage = () => {
       </div>
 
       {/* Modal */}
-      <AddStaffModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <AddStaffModal isOpen={showModal} onClose={() => setShowModal(false)} user={user} onStaffAdded={fetchStaff} />
     </div>
   );
 };

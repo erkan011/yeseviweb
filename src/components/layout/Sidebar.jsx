@@ -47,9 +47,10 @@ const superAdminItems = [
   { to: '/organizations', label: 'Kurumlar (Sistem)', icon: 'organization' },
 ];
 
-const NavItem = ({ item, isActive }) => (
+const NavItem = ({ item, isActive, onClick }) => (
   <NavLink
     to={item.to}
+    onClick={onClick}
     className={`
       flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
       transition-all duration-200 group
@@ -69,7 +70,7 @@ const NavItem = ({ item, isActive }) => (
   </NavLink>
 );
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -91,21 +92,42 @@ const Sidebar = () => {
     return location.pathname.startsWith(itemTo);
   };
 
+  const handleNavClick = () => {
+    // Close sidebar on mobile when navigating
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 w-64 h-screen flex flex-col bg-surface-900 text-white transition-transform duration-300">
+    <aside className={`
+      fixed left-0 top-0 z-40 w-64 h-screen flex flex-col bg-surface-900 text-white
+      transition-transform duration-300 ease-in-out
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      lg:translate-x-0
+    `}>
       {/* Brand */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
-          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">YeseviWeb</h2>
+            <p className="text-xs text-surface-400">
+              {isSuperAdmin ? 'Süper Yönetici' : 'Yönetim Paneli'}
+            </p>
+          </div>
+        </div>
+        {/* Close button - only on mobile */}
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-surface-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </div>
-        <div>
-          <h2 className="text-lg font-bold tracking-tight">YeseviWeb</h2>
-          <p className="text-xs text-surface-400">
-            {isSuperAdmin ? 'Süper Yönetici' : 'Yönetim Paneli'}
-          </p>
-        </div>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -117,7 +139,7 @@ const Sidebar = () => {
               ⚡ Sistem Yönetimi
             </p>
             {superAdminItems.map((item) => (
-              <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} />
+              <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} onClick={handleNavClick} />
             ))}
             <div className="my-3 border-b border-white/10" />
           </>
@@ -127,7 +149,7 @@ const Sidebar = () => {
           Ana Menü
         </p>
         {navItems.map((item) => (
-          <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} />
+          <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} onClick={handleNavClick} />
         ))}
       </nav>
 

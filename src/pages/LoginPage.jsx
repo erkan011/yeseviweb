@@ -7,6 +7,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +22,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      await loginWithEmail(email, password);
+      await loginWithEmail(email, password, rememberMe);
       navigate('/');
     } catch (err) {
       console.error("Giriş hatası:", err);
@@ -205,6 +206,8 @@ const LoginPage = () => {
               <input
                 id="remember"
                 type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="w-4 h-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="remember" className="text-sm text-surface-600 cursor-pointer">

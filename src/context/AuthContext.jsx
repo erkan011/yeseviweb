@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { subscribeToAuthState } from '../services/authService';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { subscribeToAuthState, logout } from '../services/authService';
+import { resolveUserProfile } from '../services/firestoreService';
+import AuthLoadingScreen from '../components/auth/AuthLoadingScreen';
 
 const AuthContext = createContext(null);
 
@@ -13,22 +13,11 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = subscribeToAuthState(async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              ...userData
-            });
-          } else {
-            console.error("Firestore'da kullanıcı dokümanı bulunamadı.");
-            setUser(null);
-          }
+          const profile = await resolveUserProfile(firebaseUser);
+          setUser(profile);
         } catch (error) {
           console.error("Kullanıcı verisi çekilirken hata:", error);
+          await logout();
           setUser(null);
         }
       } else {
@@ -48,7 +37,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {loading ? <AuthLoadingScreen /> : children}
     </AuthContext.Provider>
   );
 };
