@@ -3,6 +3,7 @@ import { collection, query, where, getDocs, doc, deleteDoc, setDoc } from 'fireb
 import { db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { createAdminUser } from '../services/authService';
+import { updateUserDocument } from '../services/firestoreService';
 
 // ---------- Add Staff Modal ----------
 const AddStaffModal = ({ isOpen, onClose, user, onStaffAdded }) => {
@@ -109,6 +110,101 @@ const AddStaffModal = ({ isOpen, onClose, user, onStaffAdded }) => {
   );
 };
 
+// ---------- Edit Staff Modal ----------
+const EditStaffModal = ({ isOpen, onClose, staffData, onStaffUpdated }) => {
+  const [formData, setFormData] = useState({
+    adSoyad: '', telefon: '', rol: 'saha_gorevlisi', durum: 'Aktif'
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (staffData) {
+      setFormData({
+        adSoyad: staffData.isim || staffData.ad || '',
+        telefon: staffData.telefon || '',
+        rol: staffData.rol || 'saha_gorevlisi',
+        durum: staffData.durum || 'Aktif',
+      });
+    }
+  }, [staffData]);
+
+  if (!isOpen || !staffData) return null;
+
+  const handleSubmit = async () => {
+    if (!formData.adSoyad) {
+      return alert('Lütfen ad soyad alanını doldurun.');
+    }
+    setLoading(true);
+    try {
+      await updateUserDocument(staffData.id, {
+        ad: formData.adSoyad,
+        isim: formData.adSoyad,
+        telefon: formData.telefon,
+        rol: formData.rol,
+        durum: formData.durum,
+      });
+      onStaffUpdated();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert('Personel güncellenirken hata: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-surface-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-[scaleIn_0.2s_ease-out]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
+          <h3 className="text-lg font-semibold text-surface-900">Personel Düzenle</h3>
+          <button onClick={onClose} disabled={loading} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 transition-colors cursor-pointer">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-surface-700">Ad Soyad</label>
+            <input value={formData.adSoyad} onChange={e => setFormData({...formData, adSoyad: e.target.value})} type="text" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-surface-700">Telefon</label>
+            <input value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} type="tel" placeholder="0532 111 2233" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-surface-700">Rol</label>
+              <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                <option value="saha_gorevlisi">Saha Personeli</option>
+                <option value="saha_sorumlusu">Saha Sorumlusu</option>
+                <option value="admin">Yönetici</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-surface-700">Durum</label>
+              <select value={formData.durum} onChange={e => setFormData({...formData, durum: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                <option value="Aktif">Aktif</option>
+                <option value="Pasif">Pasif</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-100">
+          <button onClick={onClose} disabled={loading} className="px-4 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-100 transition-colors cursor-pointer disabled:opacity-50">
+            İptal
+          </button>
+          <button onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all cursor-pointer disabled:opacity-50">
+            {loading ? 'Kaydediliyor...' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================
 //  STAFF PAGE
 // ============================================================
@@ -117,6 +213,8 @@ const StaffPage = () => {
   const [search, setSearch] = useState('');
   const [filterRol, setFilterRol] = useState('Tümü');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editStaffData, setEditStaffData] = useState(null);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -330,7 +428,7 @@ const StaffPage = () => {
                   <td className="px-6 py-4 text-sm text-surface-500">{p.sonAktivite || '—'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => alert('Düzenleme yakında eklenecek')} className="p-1.5 rounded-lg text-surface-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer" title="Düzenle">
+                      <button onClick={() => { setEditStaffData(p); setShowEditModal(true); }} className="p-1.5 rounded-lg text-surface-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer" title="Düzenle">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                         </svg>
@@ -363,6 +461,7 @@ const StaffPage = () => {
 
       {/* Modal */}
       <AddStaffModal isOpen={showModal} onClose={() => setShowModal(false)} user={user} onStaffAdded={fetchStaff} />
+      <EditStaffModal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setEditStaffData(null); }} staffData={editStaffData} onStaffUpdated={fetchStaff} />
     </div>
   );
 };

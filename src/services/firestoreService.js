@@ -6,6 +6,7 @@ import {
   addDoc,
   doc,
   setDoc,
+  updateDoc,
   query,
   where,
   orderBy,
@@ -79,6 +80,123 @@ export const createUserDocument = async (uid, data) => {
     olusturma_tarihi: Timestamp.now(),
   });
 };
+
+// ========================================
+// Personel Düzenleme
+// ========================================
+
+/**
+ * Firestore users koleksiyonunda personel bilgilerini günceller.
+ */
+export const updateUserDocument = async (uid, data) => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    ...data,
+    guncelleme_tarihi: Timestamp.now(),
+  });
+};
+
+// ========================================
+// Super Admin - Global İstatistikler
+// ========================================
+
+/**
+ * Süper yönetici için tüm sistemdeki global istatistikleri döndürür.
+ */
+export const getSuperAdminStats = async () => {
+  const [kurumlarSnap, usersSnap, kutularSnap] = await Promise.all([
+    getDocs(collection(db, 'kurumlar')),
+    getDocs(collection(db, 'users')),
+    getDocs(collection(db, 'kutular')),
+  ]);
+
+  const toplamKurum = kurumlarSnap.size;
+  const toplamPersonel = usersSnap.docs.filter(d => {
+    const rol = d.data().rol;
+    return rol !== 'super_admin';
+  }).length;
+  const aktifPersonel = usersSnap.docs.filter(d => {
+    const data = d.data();
+    return data.rol !== 'super_admin' && data.durum !== 'Pasif';
+  }).length;
+  const toplamKutu = kutularSnap.size;
+  const aktifKutu = kutularSnap.docs.filter(d => d.data().durum === 'Aktif').length;
+  const hasarliKutu = kutularSnap.docs.filter(d => d.data().durum === 'Hasarlı').length;
+
+  return {
+    toplamKurum,
+    toplamPersonel,
+    aktifPersonel,
+    toplamKutu,
+    aktifKutu,
+    hasarliKutu,
+  };
+};
+
+// ========================================
+// İhtiyaç Sahipleri (Beneficiaries)
+// ========================================
+
+export const getBeneficiariesByKurum = async (kurumId) => {
+  if (!kurumId) return [];
+  const q = query(collection(db, 'beneficiaries'), where('kurum_id', '==', kurumId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const addBeneficiary = async (data) => {
+  const docRef = await addDoc(collection(db, 'beneficiaries'), {
+    ...data,
+    olusturma_tarihi: Timestamp.now(),
+  });
+  return docRef.id;
+};
+
+export const updateBeneficiary = async (id, data) => {
+  const ref = doc(db, 'beneficiaries', id);
+  await updateDoc(ref, {
+    ...data,
+    guncelleme_tarihi: Timestamp.now(),
+  });
+};
+
+// ========================================
+// Login - Kurum Doğrulama
+// ========================================
+
+/**
+ * Kurum adı veya kodu ile kurum dokümanını bulur.
+ */
+export const getOrganizationByField = async (value) => {
+  if (!value) return null;
+  const normalizedValue = value.trim().toLowerCase();
+
+  // Önce kurum_kodu ile ara
+  try {
+    const byCode = query(collection(db, 'kurumlar'), where('kurum_kodu', '==', normalizedValue), limit(1));
+    const codeSnap = await getDocs(byCode);
+    if (!codeSnap.empty) {
+      const d = codeSnap.docs[0];
+      return { id: d.id, ...d.data() };
+    }
+  } catch { /* indeks yoksa devam et */ }
+
+  // kurum_adi ile ara (case-insensitive yapılamaz, exact match)
+  try {
+    const byName = query(collection(db, 'kurumlar'), where('kurum_adi', '==', value.trim()), limit(1));
+    const nameSnap = await getDocs(byName);
+    if (!nameSnap.empty) {
+      const d = nameSnap.docs[0];
+      return { id: d.id, ...d.data() };
+    }
+  } catch { /* devam et */ }
+
+  return null;
+};
+
+// ========================================
+// Yardımcı Fonksiyonlar
+// ========================================
 
 const firstDocData = (snapshot) => {
   if (snapshot.empty) return null;

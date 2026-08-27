@@ -7,7 +7,7 @@ const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-surface-50">
+    <div className="flex min-h-screen bg-surface-50 overflow-x-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -18,9 +18,9 @@ const MainLayout = () => {
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
         <Navbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
           <Outlet />
         </main>
       </div>

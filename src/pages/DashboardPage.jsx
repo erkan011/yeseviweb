@@ -4,7 +4,8 @@ import {
   getBoxesByKurum, 
   getStaffByKurum, 
   getActivitiesByKurum, 
-  getMonthlyCollectionsByKurum 
+  getMonthlyCollectionsByKurum,
+  getSuperAdminStats 
 } from '../services/firestoreService';
 
 // ---------- Stat Card ----------
@@ -197,10 +198,213 @@ const ActivityFeed = ({ activities }) => {
 };
 
 // ============================================================
+//  SUPER ADMIN ANALYTICS PANEL
+// ============================================================
+const SuperAdminDashboard = ({ user }) => {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchGlobalStats = async () => {
+      setLoading(true);
+      try {
+        const data = await getSuperAdminStats();
+        if (isMounted) setStats(data);
+      } catch (error) {
+        console.error("Global istatistikler yüklenirken hata:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchGlobalStats();
+    return () => { isMounted = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <svg className="animate-spin h-10 w-10 text-primary-600" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    );
+  }
+
+  const userFirstName = user?.isim?.split(' ')[0] ?? 'Süper Yönetici';
+
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-[fadeIn_0.3s_ease-out]">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-32 sm:w-48 h-32 sm:h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute right-16 bottom-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full translate-y-1/2" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider">
+              ⚡ Süper Yönetici
+            </span>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold">Hoş Geldiniz, {userFirstName}! 🛡️</h2>
+          <p className="mt-1 text-amber-100 text-xs sm:text-sm">Sistem geneli analitik verileri aşağıda listelenmektedir</p>
+        </div>
+      </div>
+
+      {/* Global Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+        <StatCard
+          title="Toplam Kurum"
+          value={stats?.toplamKurum ?? 0}
+          suffix="kurum"
+          color="amber"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>}
+        />
+        <StatCard
+          title="Toplam Personel"
+          value={stats?.toplamPersonel ?? 0}
+          suffix="kişi"
+          color="blue"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>}
+        />
+        <StatCard
+          title="Aktif Personel"
+          value={stats?.aktifPersonel ?? 0}
+          suffix="kişi"
+          color="green"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+        <StatCard
+          title="Toplam Kutu"
+          value={stats?.toplamKutu ?? 0}
+          suffix="adet"
+          color="green"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>}
+        />
+        <StatCard
+          title="Aktif Kutu"
+          value={stats?.aktifKutu ?? 0}
+          suffix="adet"
+          color="blue"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
+        />
+        <StatCard
+          title="Hasarlı Kutu"
+          value={stats?.hasarliKutu ?? 0}
+          suffix="adet"
+          color="red"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
+        />
+      </div>
+
+      {/* System Overview Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Kurum Dağılımı */}
+        <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-semibold text-surface-800 mb-4">Sistem Özeti</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-surface-800">Kayıtlı Kurumlar</p>
+                  <p className="text-xs text-surface-400">Aktif ve tanımlı tüm kurumlar</p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-amber-700">{stats?.toplamKurum ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-surface-800">Toplam Personel</p>
+                  <p className="text-xs text-surface-400">Tüm kurumlardaki personeller</p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-blue-700">{stats?.toplamPersonel ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-green-50 border border-green-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-surface-800">Toplam Kutu</p>
+                  <p className="text-xs text-surface-400">Sistemdeki tüm bağış kutuları</p>
+                </div>
+              </div>
+              <span className="text-2xl font-bold text-green-700">{stats?.toplamKutu ?? 0}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sistem Durumu */}
+        <div className="bg-white rounded-2xl border border-surface-200 p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-semibold text-surface-800 mb-4">Sistem Durumu</h3>
+          <div className="space-y-5">
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-surface-600">Aktif Kutu Oranı</span>
+                <span className="font-semibold text-surface-800">{stats?.toplamKutu ? Math.round((stats.aktifKutu / stats.toplamKutu) * 100) : 0}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-surface-100 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-700" style={{ width: `${stats?.toplamKutu ? (stats.aktifKutu / stats.toplamKutu) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-surface-600">Aktif Personel Oranı</span>
+                <span className="font-semibold text-surface-800">{stats?.toplamPersonel ? Math.round((stats.aktifPersonel / stats.toplamPersonel) * 100) : 0}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-surface-100 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-700" style={{ width: `${stats?.toplamPersonel ? (stats.aktifPersonel / stats.toplamPersonel) * 100 : 0}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-surface-600">Hasarlı Kutu Oranı</span>
+                <span className="font-semibold text-surface-800">{stats?.toplamKutu ? Math.round((stats.hasarliKutu / stats.toplamKutu) * 100) : 0}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-surface-100 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-700" style={{ width: `${stats?.toplamKutu ? (stats.hasarliKutu / stats.toplamKutu) * 100 : 0}%` }} />
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 p-3 rounded-xl bg-surface-50 border border-surface-100">
+            <p className="text-xs text-surface-500">
+              <span className="font-semibold text-surface-700">💡 İpucu:</span> Detaylı kurum bilgilerine Sol menüden "Kurumlar (Sistem)" sayfasından ulaşabilirsiniz.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
 //  DASHBOARD PAGE
 // ============================================================
 const DashboardPage = () => {
   const { user } = useAuth();
+  const isSuperAdmin = user?.rol === 'super_admin';
+
+  // Super Admin ise özel paneli render et
+  if (isSuperAdmin) {
+    return <SuperAdminDashboard user={user} />;
+  }
+
+  // Normal Kurum Yöneticisi Dashboard'u aşağıda devam eder
+  return <AdminDashboard user={user} />;
+};
+
+// ============================================================
+//  ADMIN (KURUM) DASHBOARD
+// ============================================================
+const AdminDashboard = ({ user }) => {
   const [loading, setLoading] = useState(true);
 
   // Stats States

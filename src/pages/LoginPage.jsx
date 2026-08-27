@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginWithEmail } from '../services/authService';
+import { loginWithEmail, logout as authLogout } from '../services/authService';
+import { resolveUserProfile, getOrganizationByField } from '../services/firestoreService';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firmaKodu, setFirmaKodu] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -17,16 +19,39 @@ const LoginPage = () => {
       setError('Lütfen e-posta ve şifre alanlarını doldurunuz.');
       return;
     }
+    if (!firmaKodu.trim()) {
+      setError('Lütfen Kurum/Firma Kodu alanını doldurunuz.');
+      return;
+    }
 
     setError('');
     setLoading(true);
 
     try {
-      await loginWithEmail(email, password, rememberMe);
+      const userCredential = await loginWithEmail(email, password, rememberMe);
+
+      // Kullanıcı profilini çek — kurum eşleşmesini kontrol et
+      const profile = await resolveUserProfile(userCredential.user);
+
+      // Super admin kontrolü — firma kodu doğrulaması atlanır
+      if (profile.rol === 'super_admin') {
+        navigate('/');
+        return;
+      }
+
+      // Kurum doğrulaması
+      if (profile.kurum_id) {
+        const org = await getOrganizationByField(firmaKodu);
+        if (!org || org.id !== profile.kurum_id) {
+          await authLogout();
+          setError('Girilen kurum/firma kodu hesabınızla eşleşmiyor. Lütfen doğru kurum kodunu girin.');
+          return;
+        }
+      }
+
       navigate('/');
     } catch (err) {
       console.error("Giriş hatası:", err);
-      // Firebase'den dönen koda göre basitçe hata mesajı verelim
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('E-posta veya şifre hatalı.');
       } else {
@@ -136,6 +161,28 @@ const LoginPage = () => {
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
+            {/* Kurum/Firma Kodu */}
+            <div className="space-y-1.5">
+              <label htmlFor="login-firma" className="block text-sm font-medium text-surface-700">
+                Kurum / Firma Kodu
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                  </svg>
+                </div>
+                <input
+                  id="login-firma"
+                  type="text"
+                  value={firmaKodu}
+                  onChange={(e) => setFirmaKodu(e.target.value)}
+                  placeholder="Kurum adı veya kodu"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-300 bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                />
+              </div>
+            </div>
+
             {/* Email */}
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="block text-sm font-medium text-surface-700">

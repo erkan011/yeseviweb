@@ -34,16 +34,29 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
     </svg>
   ),
+  settings: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  beneficiary: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+    </svg>
+  ),
 };
 
-const navItems = [
+const adminItems = [
   { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/boxes', label: 'Kutu Yönetimi', icon: 'box' },
   { to: '/staff', label: 'Personel', icon: 'users' },
-  { to: '/subscription', label: 'Abonelik', icon: 'credit' },
+  { to: '/beneficiaries', label: 'İhtiyaç Sahipleri', icon: 'beneficiary' },
+  { to: '/settings', label: 'Ayarlar / Profil', icon: 'settings' },
 ];
 
 const superAdminItems = [
+  { to: '/', label: 'Dashboard', icon: 'dashboard' },
   { to: '/organizations', label: 'Kurumlar (Sistem)', icon: 'organization' },
 ];
 
@@ -132,23 +145,10 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {/* Super Admin Section */}
-        {isSuperAdmin && (
-          <>
-            <p className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-amber-400/80">
-              ⚡ Sistem Yönetimi
-            </p>
-            {superAdminItems.map((item) => (
-              <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} onClick={handleNavClick} />
-            ))}
-            <div className="my-3 border-b border-white/10" />
-          </>
-        )}
-
-        <p className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-surface-500">
-          Ana Menü
+        <p className={`px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider ${isSuperAdmin ? 'text-amber-500/80' : 'text-surface-500'}`}>
+          {isSuperAdmin ? '⚡ Sistem Yönetimi' : 'Ana Menü'}
         </p>
-        {navItems.map((item) => (
+        {(isSuperAdmin ? superAdminItems : adminItems).map((item) => (
           <NavItem key={item.to} item={item} isActive={getIsActive(item.to)} onClick={handleNavClick} />
         ))}
       </nav>

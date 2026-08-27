@@ -5,7 +5,6 @@ const pageTitles = {
   '/': 'Dashboard',
   '/boxes': 'Kutu Yönetimi',
   '/staff': 'Personel Yönetimi',
-  '/subscription': 'Abonelik & Finans',
   '/organizations': 'Kurum Yönetimi',
 };
 

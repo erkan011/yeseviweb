@@ -5,8 +5,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import BoxesPage from './pages/BoxesPage';
 import StaffPage from './pages/StaffPage';
-import SubscriptionPage from './pages/SubscriptionPage';
 import OrganizationsPage from './pages/OrganizationsPage';
+import BeneficiariesPage from './pages/BeneficiariesPage';
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -22,8 +22,9 @@ function AppRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/boxes" element={<BoxesPage />} />
         <Route path="/staff" element={<StaffPage />} />
-        <Route path="/subscription" element={<SubscriptionPage />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/beneficiaries" element={<BeneficiariesPage />} />
+        <Route path="/settings" element={<div className="p-8 text-surface-500">Ayarlar & Profil sayfası yakında eklenecektir.</div>} />
       </Route>
 
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
