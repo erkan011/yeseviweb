@@ -1,37 +1,29 @@
-# 🚀 YeseviWeb Kapsamlı Hata Çözüm ve Geliştirme Yönergesi
+# 🚀 Web Paneli: Dinamik Veri Çekme, Gerçek Harita Entegrasyonu ve Profil Sayfası Yapılandırması
 
-Mevcut sistemde tespit edilen UI/UX, mantık ve yönlendirme hatalarını gidermek ve yeni bir modül eklemek için aşağıdaki 5 adımı sırasıyla uygula. Her adımı bitirdiğinde projeyi derle ve hata olup olmadığını kontrol et.
+Web panelimizde Firestore bağlantıları tam olarak tetiklenmediği için listeler ve Dashboard sıfır görünüyor. Ayrıca harita görünümlerimiz sahte bir ızgara (grid) yapısında ve Ayarlar sayfamız eksik. Lütfen aşağıdaki 4 adımı sırasıyla ve eksiksiz uygulayarak projeyi ayağa kaldır:
 
-## 1. Süper Yönetici Dashboard Ayrımı
-**Sorun:** Süper Yönetici ile Kurum Yöneticisi aynı Dashboard mantığını kullanıyor. Süper Yönetici dar kapsamlı veriler görüyor.
-**Çözüm:** 
-* `DashboardPage.jsx` bileşeninde aktif kullanıcının rolünü (`currentUser.rol`) kontrol et.
-* Eğer rol `super_admin` ise, ekrana **Süper Yönetici Analitik Paneli** render edilsin.
-* Bu panelde Firestore'dan global verileri çek: Sistemdeki toplam kurum sayısı, tüm kurumlardaki toplam aktif personel sayısı ve global toplam kutu sayısı gibi genel özet (Kiosk) istatistikleri gösterilsin.
+## 1. Veri Çekme İşlemlerinin (Fetch) Düzeltilmesi
+`DashboardPage` ve `BoxesPage` bileşenlerinde `useEffect` ile Firestore'dan veri çekme (fetch) işlemi çalışmıyor.
+* Hem `boxes` hem de `users` koleksiyonları için `onSnapshot` (veya getDocs) fonksiyonunu yaz. Sorgu mutlaka `where('kurum_id', '==', currentUser.kurum_id)` içermelidir.
+* **Dashboard Matematik İşlemleri:** Gelen `boxes` state'i üzerinden;
+  - *Toplam Kutu:* `boxes.length`
+  - *Aylık Gelir:* `boxes.reduce((sum, box) => sum + (Number(box.donationAmount) || 0), 0)`
+  - *Bekleyen Kutu:* Sadece `status === 'dropped'` olanların length'i.
+* Hata almamak için tüm hesaplamalarda optional chaining (`?.`) ve default value (`|| 0`) kullan.
 
-## 2. Personel "Düzenle" Butonu Aktivasyonu
-**Sorun:** `StaffPage.jsx` içerisindeki personel tablosunda yer alan "Düzenle" butonu şu an pasif veya işlevsiz.
-**Çözüm:**
-* `EditStaffModal.jsx` adında yeni bir bileşen oluştur.
-* Tablodan "Düzenle"ye basıldığında bu modal açılsın ve seçili personelin bilgileri (Ad, Telefon, Rol, Durum) forma otomatik dolsun.
-* Form kaydedildiğinde Firestore `users` koleksiyonunda ilgili personelin dokümanını `updateDoc` ile güncelle ve tabloyu yenile.
+## 2. Gerçek Harita Entegrasyonu (Leaflet veya React-Google-Maps)
+Hem Bağış Kutuları hem de İhtiyaç Sahipleri sayfalarındaki "Harita Görünümü" şu an sahte bir CSS grid arka planına sahip. Bunu gerçek bir haritaya dönüştür:
+* Projeye uygun olan gerçek bir harita kütüphanesi (Örn: `react-leaflet` veya Google Maps) entegre et.
+* **Kutular Haritası (`BoxesPage`):** `latitude` ve `longitude` değerlerine göre haritaya pin ekle. Durumu 'dropped' olanlar sarı/turuncu, 'collected' olanlar yeşil pin olsun.
+* **İhtiyaç Sahipleri Haritası (`BeneficiariesPage`):** Kişilerin konumlarına pin ekle ve `needStatus` değerine göre renklendir (Acil=Kırmızı, Bekliyor=Sarı, Tamamlandı=Yeşil).
+* Pinlere tıklandığında (Popup/InfoWindow) isim ve durum bilgilerini göster.
 
-## 3. UI/UX ve Mobil Uyum (Responsive) Taşma Sorunları
-**Sorun:** Mobil görünümlerde veya sayfa geçişlerinde ekran dışına taşmalar (overflow) ve boyutlandırma hataları yaşanıyor.
-**Çözüm:**
-* `MainLayout.jsx` veya ana kapsayıcı div'lerde yatay taşmayı engellemek için `overflow-x-hidden` sınıfını ekle.
-* Sayfa içeriklerindeki geniş div'lere `w-full max-w-full` sınırları koy.
-* Harita ve Tablo kapsayıcılarının mobilde ekranı patlatmaması için Tailwind'in `flex-col`, `overflow-x-auto` (tablolar için) ve yüksekliği sınırlayan (`min-h-[50vh]`) responsive (`sm:`, `md:`) yapılarını baştan aşağı denetle ve düzelt.
+## 3. Ayarlar / Profil Sayfasının Oluşturulması
+Ekranda "Yakında eklenecektir" yazan `SettingsPage.jsx` bileşenini tamamen kodla.
+* Kullanıcının bilgilerini (`name`, `email`, `phone`, `role`) form alanlarında göster (Profil düzenleme formu).
+* Bu sayfada şifre sıfırlama (Firebase sendPasswordResetEmail) butonu ve "Çıkış Yap" butonu da bulundur.
 
-## 4. Giriş (Login) Ekranı Güncellemesi
-**Sorun:** Sadece E-posta ve Şifre ile giriş yapılıyor. Tasarımsal ve işlevsel olarak "Firma/Kurum Adı" alanı eksik.
-**Çözüm:**
-* `LoginPage.jsx` formuna "Kurum/Firma Kodu" veya "Firma Adı" adında zorunlu bir text input ekle.
-* Kullanıcı giriş yaparken, Authentication başarılı olduktan sonra Firestore'dan çekilen kullanıcı dokümanındaki `kurum_id` (veya kurum adı) ile formdan girilen "Firma Adı" bilgisini eşleştir. Uyuşmazlık varsa girişi reddet ve güvenli çıkış (`signOut`) yaptırarak uyarı ver.
-
-## 5. Yeni Modül: İhtiyaç Sahibi Sayfası
-**Sorun:** Kutu yönetimine benzer, yardımların ulaştırılacağı kişilerin takip edileceği bir sayfa eksik.
-**Çözüm:**
-* `BeneficiariesPage.jsx` (İhtiyaç Sahipleri) adında yeni bir sayfa oluştur ve `App.jsx` rotalarına ekle. `Sidebar.jsx` menüsüne dahil et.
-* Kutu yönetimiyle aynı UI mantığını kurgula: Üstte bir Harita (Map), altta bir Veri Tablosu.
-* Firestore'da `beneficiaries` adında yeni bir koleksiyon hedefle. Harita üzerinde ihtiyaç sahiplerinin lokasyonlarını (latitude/longitude), tabloda ise Ad, Adres, İhtiyaç Durumu ve Son Teslimat Tarihi gibi bilgileri listele.
+## 4. Dinamik Sidebar (Kurum Adı Gösterimi)
+Sidebar menüsünün en üstünde statik olarak "YeseviWeb" yazıyor. 
+* Bu kısmı dinamik hale getir: Mevcut kullanıcının `kurum_id` değerini kullanarak `kurumlar` koleksiyonundan ilgili dokümanı çek.
+* O dokümandaki **`name`** (Örn: "Yesevi Harekatı Gaziantep") bilgisini statik "YeseviWeb" yazısının yerine yerleştir. Eğer yükleniyorsa "Yükleniyor..." veya varsayılan bir ikon göster.

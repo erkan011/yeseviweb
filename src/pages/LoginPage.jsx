@@ -7,7 +7,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firmaKodu, setFirmaKodu] = useState('');
+  const [kurumAdi, setKurumAdi] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -19,8 +19,8 @@ const LoginPage = () => {
       setError('Lütfen e-posta ve şifre alanlarını doldurunuz.');
       return;
     }
-    if (!firmaKodu.trim()) {
-      setError('Lütfen Kurum/Firma Kodu alanını doldurunuz.');
+    if (!kurumAdi.trim()) {
+      setError('Lütfen Kurum / Firma Adı alanını doldurunuz.');
       return;
     }
 
@@ -28,37 +28,55 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const userCredential = await loginWithEmail(email, password, rememberMe);
-
-      // Kullanıcı profilini çek — kurum eşleşmesini kontrol et
-      const profile = await resolveUserProfile(userCredential.user);
-
-      // Super admin kontrolü — firma kodu doğrulaması atlanır
-      if (profile.rol === 'super_admin') {
-        navigate('/');
+      // 1. Kurum Adı ile Sorgu (getOrganizationByField checks kurum_adi and kurum_kodu, wait, prompt says where('name', '==', girilenKurumAdi)
+      // I will implement raw firestore logic as requested
+      const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
+      const { db } = await import('../services/firebase');
+      
+      const q = query(collection(db, 'kurumlar'), where('name', '==', kurumAdi.trim()), limit(1));
+      const orgSnap = await getDocs(q);
+      
+      if (orgSnap.empty) {
+        setError('Böyle bir kurum bulunamadı.');
+        setLoading(false);
         return;
       }
+      const verifiedKurumId = orgSnap.docs[0].id;
+      const orgData = orgSnap.docs[0].data();
 
-      // Kurum doğrulaması
-      if (profile.kurum_id) {
-        const org = await getOrganizationByField(firmaKodu);
-        if (!org || org.id !== profile.kurum_id) {
+      // 2. Firebase sign in
+      const userCredential = await loginWithEmail(email, password, rememberMe);
+
+      // 3. User document by uid
+      const profile = await resolveUserProfile(userCredential.user);
+
+      // 4. Kritik Kontrol
+      if (profile.rol !== 'super_admin') {
+        if (profile.kurum_id !== verifiedKurumId) {
           await authLogout();
-          setError('Girilen kurum/firma kodu hesabınızla eşleşmiyor. Lütfen doğru kurum kodunu girin.');
+          setError('Bu kuruma ait yetkiniz yok.');
+          setLoading(false);
           return;
         }
       }
 
+      // Save to localStorage
+      localStorage.setItem('authUser', JSON.stringify({ ...profile, institution_details: orgData }));
+      
       navigate('/');
     } catch (err) {
       console.error("Giriş hatası:", err);
+      // Wait for auth context to clear if login failed
+      await authLogout();
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('E-posta veya şifre hatalı.');
       } else {
         setError('Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.');
       }
     } finally {
-      setLoading(false);
+      if (window.location.pathname === '/login') {
+        setLoading(false);
+      }
     }
   };
 
@@ -161,10 +179,10 @@ const LoginPage = () => {
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Kurum/Firma Kodu */}
+            {/* Kurum/Firma Adı */}
             <div className="space-y-1.5">
               <label htmlFor="login-firma" className="block text-sm font-medium text-surface-700">
-                Kurum / Firma Kodu
+                Kurum / Firma Adı (Örn: Yesevi Harekatı Gaziantep)
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -175,9 +193,9 @@ const LoginPage = () => {
                 <input
                   id="login-firma"
                   type="text"
-                  value={firmaKodu}
-                  onChange={(e) => setFirmaKodu(e.target.value)}
-                  placeholder="Kurum adı veya kodu"
+                  value={kurumAdi}
+                  onChange={(e) => setKurumAdi(e.target.value)}
+                  placeholder="Kurum / Firma Adı (Örn: Yesevi Harekatı Gaziantep)"
                   className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-300 bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                 />
               </div>

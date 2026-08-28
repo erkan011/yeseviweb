@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { db } from '../services/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { 
-  getBoxesByKurum, 
-  getStaffByKurum, 
-  getActivitiesByKurum, 
   getMonthlyCollectionsByKurum,
   getSuperAdminStats 
 } from '../services/firestoreService';
@@ -407,90 +406,125 @@ const DashboardPage = () => {
 const AdminDashboard = ({ user }) => {
   const [loading, setLoading] = useState(true);
 
-  // Stats States
-  const [stats, setStats] = useState({
-    toplamKutu: 0,
-    aktifPersonel: 0,
-    hasarliKutu: 0,
-    aylikGelir: 0,
-    gecenAyGelir: 1 // div by zero exception guard
-  });
-  const [activities, setActivities] = useState([]);
-  const [boxStatus, setBoxStatus] = useState([]);
+  // States
+  const [boxes, setBoxes] = useState([]);
+  const [users, setUsers] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
     
-    const fetchData = async () => {
-      if (!user?.kurum_id) {
-        if (isMounted) setLoading(false);
-        return;
+    if (!user?.kurum_id) {
+      if (isMounted) setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+
+    const qBoxes = query(collection(db, 'boxes'), where('kurum_id', '==', user.kurum_id));
+    const unsubscribeBoxes = onSnapshot(qBoxes, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (isMounted) {
+        setBoxes(data);
+        setLoading(false); // End loading when main data arrives
       }
-      setLoading(true);
+    }, (error) => {
+      console.error("Dashboard kutular dinlenirken hata:", error);
+      if (isMounted) setLoading(false);
+    });
+
+    const qUsers = query(collection(db, 'users'), where('kurum_id', '==', user.kurum_id));
+    const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (isMounted) {
+        setUsers(data);
+      }
+    }, (error) => {
+      console.error("Dashboard users dinlenirken hata:", error);
+    });
+
+    const fetchMonthlyData = async () => {
       try {
-        const [kutuData, personelData, aktiviteData, toplamaData] = await Promise.all([
-          getBoxesByKurum(user.kurum_id),
-          getStaffByKurum(user.kurum_id),
-          getActivitiesByKurum(user.kurum_id),
-          getMonthlyCollectionsByKurum(user.kurum_id)
-        ]);
-
-        if (isMounted) {
-          // Kutular üzerinden aggregation
-          const aktif = kutuData.filter(b => b.durum === 'Aktif').length;
-          const dolu = kutuData.filter(b => b.durum === 'Dolu').length;
-          const hasarli = kutuData.filter(b => b.durum === 'Hasarlı').length;
-          const bakimda = kutuData.filter(b => b.durum === 'Bakımda').length;
-          
-          setBoxStatus([
-             { durum: 'Aktif', sayi: aktif, renk: '#22c55e' },
-             { durum: 'Dolu', sayi: dolu, renk: '#3b82f6' },
-             { durum: 'Hasarlı', sayi: hasarli, renk: '#ef4444' },
-             { durum: 'Bakımda', sayi: bakimda, renk: '#f59e0b' },
-          ]);
-
-          const aktifPers = personelData.filter(p => p.durum === 'Aktif').length;
-
-          // Abonelik veya toplama işlemlerinden gelir bulunabilir (Mock: Gelir şimdilik sabit)
-          setStats({
-            toplamKutu: kutuData.length,
-            aktifPersonel: aktifPers,
-            hasarliKutu: hasarli,
-            aylikGelir: 0, // Henüz Firestore'da yok 
-            gecenAyGelir: 1 
-          });
-
-          setActivities(aktiviteData);
-          setMonthlyData(toplamaData);
-        }
-      } catch (error) {
-        console.error("Dashboard verileri yüklenirken hata:", error);
-      } finally {
-        if (isMounted) setLoading(false);
+        const toplamaData = await getMonthlyCollectionsByKurum(user.kurum_id);
+        if (isMounted) setMonthlyData(toplamaData);
+      } catch (err) {
+        console.error("Monthly data hata:", err);
       }
     };
+    fetchMonthlyData();
 
-    fetchData();
-    return () => { isMounted = false; };
-  }, [user]);
+    return () => { 
+      isMounted = false; 
+      unsubscribeBoxes();
+      unsubscribeUsers();
+    };
+  }, [user?.kurum_id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <svg className="animate-spin h-10 w-10 text-primary-600" fill="none" viewBox="0 0 24 24">
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <svg className="animate-spin h-10 w-10 text-primary-600 mb-4" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
+        <span className="text-surface-500 font-medium text-lg">Yükleniyor...</span>
       </div>
     );
   }
 
   const userFirstName = user?.isim?.split(' ')[0] ?? 'Yönetici';
-  // Gelir değişimi hesaplaması (gelecekte kullanılabilir)
+
+  // Dinamik Hesaplamalar
+  const totalBoxes = boxes?.length || 0;
+  const activeStaff = users?.length || 0;
+  const activeBoxes = boxes?.filter(box => box?.status === 'dropped')?.length || 0;
+  const aylikGelir = boxes?.reduce((acc, box) => acc + (Number(box?.donationAmount) || 0), 0) || 0;
+
+  // Box status (DonutChart için)
+  const dropped = boxes?.filter(b => b?.status === 'dropped')?.length || 0;
+  const collected = boxes?.filter(b => b?.status === 'collected')?.length || 0;
+  const damaged = boxes?.filter(b => b?.status === 'damaged')?.length || 0;
+  const maintenance = boxes?.filter(b => b?.status === 'maintenance')?.length || 0;
+
+  const boxStatus = [
+     { durum: 'Bekliyor/Aktif', sayi: dropped, renk: '#22c55e' },
+     { durum: 'Toplandı', sayi: collected, renk: '#3b82f6' },
+     { durum: 'Hasarlı', sayi: damaged, renk: '#ef4444' },
+     { durum: 'Bakımda', sayi: maintenance, renk: '#f59e0b' },
+  ];
+
+  // Son Aktiviteler
+  const derivedActivities = (boxes || []).reduce((acc, b) => {
+    if (b?.droppedAt) {
+       acc.push({
+          id: `${b?.id}-drop`,
+          tip: 'sistem',
+          ikon: 'box',
+          mesaj: `${b?.shopName || b?.id || 'Bilinmeyen'} konumuna kutu bırakıldı.`,
+          zamanDate: b.droppedAt?.toDate ? b.droppedAt.toDate() : new Date(b.droppedAt)
+       });
+    }
+    if (b?.collectedAt) {
+       acc.push({
+          id: `${b?.id}-col`,
+          tip: 'toplama',
+          ikon: 'box',
+          mesaj: `${b?.shopName || b?.id || 'Bilinmeyen'} konumundaki kutu toplandı. (₺${b?.donationAmount || 0})`,
+          zamanDate: b.collectedAt?.toDate ? b.collectedAt.toDate() : new Date(b.collectedAt)
+       });
+    }
+    return acc;
+  }, []);
+
+  const sortedActivities = derivedActivities
+    .sort((a,b) => b.zamanDate - a.zamanDate)
+    .slice(0, 5)
+    .map(a => ({ ...a, zaman: a.zamanDate.toLocaleDateString('tr-TR') }));
+
+  const gecenAyGelir = 1; // Sabit bir önceki ay değeri (div / 0 yemesin diye 1)
   let gelirDegisim = 0;
-  if (stats?.gecenAyGelir > 0) {
-    gelirDegisim = (((stats.aylikGelir - stats.gecenAyGelir) / stats.gecenAyGelir) * 100).toFixed(1);
+  if (gecenAyGelir > 0) {
+    gelirDegisim = (((aylikGelir - gecenAyGelir) / gecenAyGelir) * 100).toFixed(1);
   }
 
   return (
@@ -509,7 +543,7 @@ const AdminDashboard = ({ user }) => {
       <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Toplam Kutu"
-          value={stats?.toplamKutu ?? 0}
+          value={totalBoxes}
           suffix="adet"
           change="+12 bu ay"
           changeType="up"
@@ -518,7 +552,7 @@ const AdminDashboard = ({ user }) => {
         />
         <StatCard
           title="Aktif Personel"
-          value={stats?.aktifPersonel ?? 0}
+          value={activeStaff}
           suffix="kişi"
           change="+3 bu ay"
           changeType="up"
@@ -526,17 +560,17 @@ const AdminDashboard = ({ user }) => {
           icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>}
         />
         <StatCard
-          title="Hasarlı Kutu"
-          value={stats?.hasarliKutu ?? 0}
+          title="Bekleyen / Aktif Kutu"
+          value={activeBoxes}
           suffix="adet"
-          change="-2 bu ay"
+          change="status: 'dropped'"
           changeType="down"
-          color="red"
+          color="amber"
           icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>}
         />
         <StatCard
           title="Aylık Gelir"
-          value={`₺${(stats?.aylikGelir ?? 0).toLocaleString('tr-TR')}`}
+          value={`₺${(aylikGelir || 0).toLocaleString('tr-TR')}`}
           change={`%${gelirDegisim} artış`}
           changeType="up"
           color="amber"
@@ -551,7 +585,7 @@ const AdminDashboard = ({ user }) => {
       </div>
 
       {/* Activity Feed */}
-      <ActivityFeed activities={activities ?? []} />
+      <ActivityFeed activities={sortedActivities ?? []} />
     </div>
   );
 };

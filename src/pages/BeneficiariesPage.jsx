@@ -1,6 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getBeneficiariesByKurum, addBeneficiary } from '../services/firestoreService';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix leaflet default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+const createColoredIcon = (color) => {
+  const svgIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="5" fill="#fff"/>
+    </svg>`;
+  return L.divIcon({
+    html: svgIcon,
+    className: '',
+    iconSize: [28, 42],
+    iconAnchor: [14, 42],
+    popupAnchor: [0, -42],
+  });
+};
+
+const acilIcon = createColoredIcon('#ef4444');      // Kırmızı
+const bekliyorIcon = createColoredIcon('#f59e0b');   // Sarı
+const tamamlandiIcon = createColoredIcon('#22c55e'); // Yeşil
+const devamIcon = createColoredIcon('#3b82f6');      // Mavi
+
+const getBeneficiaryIcon = (needStatus) => {
+  switch (needStatus) {
+    case 'Acil': return acilIcon;
+    case 'Bekliyor': return bekliyorIcon;
+    case 'Tamamlandı': return tamamlandiIcon;
+    case 'Devam Ediyor': return devamIcon;
+    default: return bekliyorIcon;
+  }
+};
 
 // ---------- Status Badge ----------
 const StatusBadge = ({ durum }) => {
@@ -17,8 +58,13 @@ const StatusBadge = ({ durum }) => {
   );
 };
 
-// ---------- Map View ----------
+// ---------- Real Leaflet Map View ----------
 const BeneficiaryMapView = ({ data }) => {
+  const validPins = data.filter(d => d?.lat && d?.lng);
+  const center = validPins.length > 0
+    ? [validPins[0].lat, validPins[0].lng]
+    : [37.066, 37.383]; // Gaziantep default
+
   return (
     <div className="bg-white rounded-2xl border border-surface-200 overflow-hidden">
       <div className="px-6 py-4 border-b border-surface-100 flex items-center justify-between">
@@ -34,67 +80,31 @@ const BeneficiaryMapView = ({ data }) => {
         </div>
       </div>
 
-      <div className="relative h-[480px] bg-surface-100 overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, #fef3c7 0%, #f1f5f9 50%, #e3f2fd 100%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: 'linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
+      <div className="h-[480px]">
+        <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {data.map((item, index) => {
+            const lat = Number(item?.lat);
+            const lng = Number(item?.lng);
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return null;
 
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border border-surface-200">
-          <p className="text-sm font-semibold text-surface-700">📍 İhtiyaç Sahipleri</p>
-          <p className="text-xs text-surface-400">Lokasyon Haritası</p>
-        </div>
-
-        {data.map((item, index) => {
-          const dotColor = {
-            'Acil': 'bg-red-500 ring-red-500/30',
-            'Bekliyor': 'bg-amber-500 ring-amber-500/30',
-            'Tamamlandı': 'bg-green-500 ring-green-500/30',
-            'Devam Ediyor': 'bg-blue-500 ring-blue-500/30',
-          };
-
-          let latVal = item.lat || (37.06 + Math.random() * 0.1);
-          let lngVal = item.lng || (37.34 + Math.random() * 0.1);
-
-          const x = ((lngVal - 37.34) / 0.15) * 80 + 10;
-          const y = ((37.10 - latVal) / 0.16) * 80 + 10;
-
-          return (
-            <div
-              key={item.id || index}
-              className="absolute group cursor-pointer"
-              style={{ left: `${Math.min(Math.max(x, 5), 92)}%`, top: `${Math.min(Math.max(y, 5), 90)}%` }}
-            >
-              <div className={`absolute w-5 h-5 rounded-full ${dotColor[item.ihtiyac_durumu]?.split(' ')[0] || 'bg-amber-500'} opacity-30 animate-ping`} />
-              <div className={`relative w-5 h-5 rounded-full ${dotColor[item.ihtiyac_durumu] || 'bg-amber-500 ring-amber-500/30'} ring-4 flex items-center justify-center shadow-lg transition-transform group-hover:scale-125`}>
-                <span className="text-[7px] text-white font-bold">{index + 1}</span>
-              </div>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                <div className="bg-surface-900 text-white rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-xl">
-                  <p className="font-semibold">{item.ad_soyad || 'Bilinmiyor'}</p>
-                  <p className="text-surface-300 mt-0.5">{item.adres || 'Adres bilgisi yok'}</p>
-                  <p className="text-surface-300">{item.ihtiyac_durumu || 'Bekliyor'}</p>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-surface-900" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm border border-surface-200 flex items-center justify-between">
-          <p className="text-xs text-surface-500">
-            <span className="font-semibold text-surface-700">İpucu:</span> Harita üzerindeki pinlerin üzerine gelerek detaylı bilgi görebilirsiniz.
-          </p>
-        </div>
+            return (
+              <Marker key={item?.id || index} position={[lat, lng]} icon={getBeneficiaryIcon(item?.needStatus)}>
+                <Popup>
+                  <div className="text-sm">
+                    <p className="font-bold text-surface-800">{item?.fullName || 'Bilinmiyor'}</p>
+                    <p className="text-surface-500 mt-1">Durum: <strong>{item?.needStatus || 'Bekliyor'}</strong></p>
+                    <p className="text-surface-500">{item?.address || 'Adres bilgisi yok'}</p>
+                    {item?.phone && <p className="text-surface-400 text-xs mt-1">Tel: {item.phone}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
       </div>
     </div>
   );
@@ -228,23 +238,24 @@ const BeneficiariesPage = () => {
     fetchData();
   }, [user]);
 
-  const filteredData = beneficiaries.filter((b) => {
-    const sAd = b.ad_soyad || '';
-    const sAdres = b.adres || '';
+  const filteredData = (beneficiaries || []).filter((b) => {
+    const sAd = b?.fullName || '';
+    const sAdres = b?.address || '';
     const matchesSearch =
       sAd.toLowerCase().includes(search.toLowerCase()) ||
       sAdres.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterDurum === 'Tümü' || b.ihtiyac_durumu === filterDurum;
+    const matchesStatus = filterDurum === 'Tümü' || b?.needStatus === filterDurum;
     return matchesSearch && matchesStatus;
   });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <svg className="animate-spin h-10 w-10 text-primary-600" fill="none" viewBox="0 0 24 24">
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <svg className="animate-spin h-10 w-10 text-primary-600 mb-4" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
+        <span className="text-surface-500 font-medium text-lg">Yükleniyor...</span>
       </div>
     );
   }
@@ -277,7 +288,7 @@ const BeneficiariesPage = () => {
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{beneficiaries.length}</p>
+            <p className="text-2xl font-bold text-surface-900">{beneficiaries?.length || 0}</p>
             <p className="text-sm text-surface-400">Toplam</p>
           </div>
         </div>
@@ -288,7 +299,7 @@ const BeneficiariesPage = () => {
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{beneficiaries.filter(b => b.ihtiyac_durumu === 'Acil').length}</p>
+            <p className="text-2xl font-bold text-surface-900">{beneficiaries?.filter(b => b?.needStatus === 'Acil')?.length || 0}</p>
             <p className="text-sm text-surface-400">Acil</p>
           </div>
         </div>
@@ -299,7 +310,7 @@ const BeneficiariesPage = () => {
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{beneficiaries.filter(b => b.ihtiyac_durumu === 'Bekliyor').length}</p>
+            <p className="text-2xl font-bold text-surface-900">{beneficiaries?.filter(b => b?.needStatus === 'Bekliyor')?.length || 0}</p>
             <p className="text-sm text-surface-400">Bekliyor</p>
           </div>
         </div>
@@ -310,7 +321,7 @@ const BeneficiariesPage = () => {
             </svg>
           </div>
           <div>
-            <p className="text-2xl font-bold text-surface-900">{beneficiaries.filter(b => b.ihtiyac_durumu === 'Tamamlandı').length}</p>
+            <p className="text-2xl font-bold text-surface-900">{beneficiaries?.filter(b => b?.needStatus === 'Tamamlandı')?.length || 0}</p>
             <p className="text-sm text-surface-400">Tamamlandı</p>
           </div>
         </div>
@@ -396,16 +407,16 @@ const BeneficiariesPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                            {(b.ad_soyad || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                            {(b?.fullName || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </div>
-                          <p className="text-sm font-medium text-surface-800">{b.ad_soyad || 'Bilinmiyor'}</p>
+                          <p className="text-sm font-medium text-surface-800">{b?.fullName || 'Bilinmiyor'}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-surface-600 max-w-[200px] truncate">{b.adres || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-surface-600">{b.telefon || '—'}</td>
-                      <td className="px-6 py-4"><StatusBadge durum={b.ihtiyac_durumu || 'Bekliyor'} /></td>
-                      <td className="px-6 py-4 text-sm text-surface-500">{b.son_teslimat || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-surface-500 max-w-[150px] truncate">{b.notlar || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-surface-600 max-w-[200px] truncate">{b?.address || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-surface-600">{b?.phone || '—'}</td>
+                      <td className="px-6 py-4"><StatusBadge durum={b?.needStatus || 'Bekliyor'} /></td>
+                      <td className="px-6 py-4 text-sm text-surface-500">{b?.son_teslimat || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-surface-500 max-w-[150px] truncate">{b?.notes || '—'}</td>
                     </tr>
                   ))
                 )}

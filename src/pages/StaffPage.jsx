@@ -253,17 +253,17 @@ const StaffPage = () => {
   };
 
   const filteredStaff = staff.filter((s) => {
-    const ad = s.isim || s.ad || '';
-    const email = s.email || '';
+    const ad = s?.name || '';
+    const email = s?.email || '';
     
     const matchesSearch =
       ad.toLowerCase().includes(search.toLowerCase()) ||
       email.toLowerCase().includes(search.toLowerCase());
       
     // Rol mapping adjustment for mapping UI to DB values if needed
-    let sRol = s.rol || 'Personel';
-    if(s.rol === 'admin') sRol = 'Yönetici';
-    if(s.rol === 'saha_gorevlisi') sRol = 'Saha Personeli';
+    let sRol = s?.role || 'Personel';
+    if(s?.role === 'admin') sRol = 'Yönetici';
+    if(s?.role === 'saha_gorevlisi') sRol = 'Saha Personeli';
 
     const matchesRole = filterRol === 'Tümü' || sRol.includes(filterRol) || filterRol.includes(sRol);
     return matchesSearch && matchesRole;
@@ -397,8 +397,8 @@ const StaffPage = () => {
             </thead>
             <tbody className="divide-y divide-surface-100">
               {!loading && filteredStaff.map((p) => {
-                const sName = p.isim || p.ad || 'Bilinmiyor';
-                let sRol = p.rol || 'Personel';
+                const sName = p?.name || 'Bilinmiyor';
+                let sRol = p?.role || 'Personel';
                 if(sRol === 'admin') sRol = 'Yönetici';
                 if(sRol === 'saha_gorevlisi') sRol = 'Saha Personeli';
                 
@@ -407,25 +407,25 @@ const StaffPage = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                        {sName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                        {sName !== 'Bilinmiyor' ? sName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?'}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-surface-800">{sName}</p>
-                        <p className="text-xs text-surface-400">{p.id.substring(0, 8)}</p>
+                        <p className="text-xs text-surface-400">{p?.id?.substring(0, 8)}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-surface-700">{p.email}</p>
-                    <p className="text-xs text-surface-400">{p.telefon || '-'}</p>
+                    <p className="text-sm text-surface-700">{p?.email}</p>
+                    <p className="text-xs text-surface-400">{p?.phone || '-'}</p>
                   </td>
                   <td className="px-6 py-4">{rolBadge(sRol)}</td>
-                  <td className="px-6 py-4">{durumBadge(p.durum || 'Aktif')}</td>
+                  <td className="px-6 py-4">{durumBadge(p?.durum || 'Aktif')}</td>
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-surface-700">{p.atananKutu || 0}</span>
+                    <span className="text-sm font-medium text-surface-700">{p?.atananKutu || 0}</span>
                     <span className="text-xs text-surface-400 ml-1">kutu</span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-surface-500">{p.sonAktivite || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-surface-500">{p?.sonAktivite || '—'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => { setEditStaffData(p); setShowEditModal(true); }} className="p-1.5 rounded-lg text-surface-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer" title="Düzenle">

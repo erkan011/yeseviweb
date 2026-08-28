@@ -7,6 +7,7 @@ import BoxesPage from './pages/BoxesPage';
 import StaffPage from './pages/StaffPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import BeneficiariesPage from './pages/BeneficiariesPage';
+import SettingsPage from './pages/SettingsPage';
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -24,7 +25,7 @@ function AppRoutes() {
         <Route path="/staff" element={<StaffPage />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/beneficiaries" element={<BeneficiariesPage />} />
-        <Route path="/settings" element={<div className="p-8 text-surface-500">Ayarlar & Profil sayfası yakında eklenecektir.</div>} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />

@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../services/authService';
+import { db } from '../../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // SVG icon components
 const icons = {
@@ -90,6 +93,42 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const isSuperAdmin = user?.rol === 'super_admin';
 
+  // Dynamic organization name
+  const [kurumAdi, setKurumAdi] = useState(null);
+  const [kurumLoading, setKurumLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchKurumAdi = async () => {
+      if (!user?.kurum_id || isSuperAdmin) {
+        if (isMounted) setKurumAdi(null);
+        return;
+      }
+      setKurumLoading(true);
+      try {
+        const kurumRef = doc(db, 'kurumlar', user.kurum_id);
+        const kurumSnap = await getDoc(kurumRef);
+        if (isMounted) {
+          if (kurumSnap.exists()) {
+            const data = kurumSnap.data();
+            setKurumAdi(data?.name || data?.kurum_adi || 'YeseviWeb');
+          } else {
+            setKurumAdi('YeseviWeb');
+          }
+        }
+      } catch (err) {
+        console.error('Kurum adı çekilirken hata:', err);
+        if (isMounted) setKurumAdi('YeseviWeb');
+      } finally {
+        if (isMounted) setKurumLoading(false);
+      }
+    };
+    fetchKurumAdi();
+    return () => { isMounted = false; };
+  }, [user?.kurum_id, isSuperAdmin]);
+
+  const displayName = isSuperAdmin ? 'YeseviWeb' : (kurumLoading ? 'Yükleniyor...' : (kurumAdi || 'YeseviWeb'));
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -119,14 +158,14 @@ const Sidebar = ({ isOpen, onClose }) => {
     `}>
       {/* Brand */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg flex-shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
           </div>
-          <div>
-            <h2 className="text-lg font-bold tracking-tight">YeseviWeb</h2>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold tracking-tight truncate" title={displayName}>{displayName}</h2>
             <p className="text-xs text-surface-400">
               {isSuperAdmin ? 'Süper Yönetici' : 'Yönetim Paneli'}
             </p>

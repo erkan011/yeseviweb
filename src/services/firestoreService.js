@@ -16,14 +16,14 @@ import {
 
 export const getBoxesByKurum = async (kurumId) => {
   if (!kurumId) return [];
-  const q = query(collection(db, 'kutular'), where('kurum_id', '==', kurumId));
+  const q = query(collection(db, 'boxes'), where('kurum_id', '==', kurumId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const getStaffByKurum = async (kurumId) => {
   if (!kurumId) return [];
-  const q = query(collection(db, 'personeller'), where('kurum_id', '==', kurumId));
+  const q = query(collection(db, 'users'), where('kurum_id', '==', kurumId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
@@ -107,7 +107,7 @@ export const getSuperAdminStats = async () => {
   const [kurumlarSnap, usersSnap, kutularSnap] = await Promise.all([
     getDocs(collection(db, 'kurumlar')),
     getDocs(collection(db, 'users')),
-    getDocs(collection(db, 'kutular')),
+    getDocs(collection(db, 'boxes')),
   ]);
 
   const toplamKurum = kurumlarSnap.size;
