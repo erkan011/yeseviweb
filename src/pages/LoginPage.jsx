@@ -32,10 +32,10 @@ const LoginPage = () => {
       // I will implement raw firestore logic as requested
       const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
       const { db } = await import('../services/firebase');
-      
+
       const q = query(collection(db, 'kurumlar'), where('name', '==', kurumAdi.trim()), limit(1));
       const orgSnap = await getDocs(q);
-      
+
       if (orgSnap.empty) {
         setError('Böyle bir kurum bulunamadı.');
         setLoading(false);
@@ -62,7 +62,7 @@ const LoginPage = () => {
 
       // Save to localStorage
       localStorage.setItem('authUser', JSON.stringify({ ...profile, institution_details: orgData }));
-      
+
       navigate('/');
     } catch (err) {
       console.error("Giriş hatası:", err);
@@ -195,7 +195,6 @@ const LoginPage = () => {
                   type="text"
                   value={kurumAdi}
                   onChange={(e) => setKurumAdi(e.target.value)}
-                  placeholder="Kurum / Firma Adı (Örn: Yesevi Harekatı Gaziantep)"
                   className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-300 bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                 />
               </div>
