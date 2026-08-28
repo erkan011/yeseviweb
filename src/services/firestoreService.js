@@ -7,6 +7,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -147,9 +148,14 @@ export const getBeneficiariesByKurum = async (kurumId) => {
 export const addBeneficiary = async (data) => {
   const docRef = await addDoc(collection(db, 'beneficiaries'), {
     ...data,
-    olusturma_tarihi: Timestamp.now(),
+    createdAt: Timestamp.now(),
   });
   return docRef.id;
+};
+
+export const deleteBeneficiary = async (id) => {
+  const ref = doc(db, 'beneficiaries', id);
+  await deleteDoc(ref);
 };
 
 export const updateBeneficiary = async (id, data) => {

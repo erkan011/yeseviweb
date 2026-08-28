@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBeneficiariesByKurum, addBeneficiary } from '../services/firestoreService';
+import { getBeneficiariesByKurum, addBeneficiary, deleteBeneficiary } from '../services/firestoreService';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -67,6 +67,7 @@ const BeneficiaryMapView = ({ data }) => {
 
   return (
     <div className="bg-white rounded-2xl border border-surface-200 overflow-hidden">
+      {/* Map Header */}
       <div className="px-6 py-4 border-b border-surface-100 flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-surface-800">Harita Görünümü</h3>
@@ -80,6 +81,7 @@ const BeneficiaryMapView = ({ data }) => {
         </div>
       </div>
 
+      {/* Leaflet Map - Same dimensions as BoxesPage */}
       <div className="h-[480px]">
         <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
           <TileLayer
@@ -113,15 +115,15 @@ const BeneficiaryMapView = ({ data }) => {
 // ---------- Add Beneficiary Modal ----------
 const AddBeneficiaryModal = ({ isOpen, onClose, user, onAdded }) => {
   const [formData, setFormData] = useState({
-    ad_soyad: '', adres: '', telefon: '', ihtiyac_durumu: 'Bekliyor',
-    lat: '', lng: '', notlar: ''
+    fullName: '', address: '', phone: '', needStatus: 'Bekliyor',
+    lat: '', lng: '', notes: ''
   });
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
-    if (!formData.ad_soyad) {
+    if (!formData.fullName) {
       return alert('Lütfen Ad Soyad alanını doldurun.');
     }
     const activeKurumId = user?.kurum_id || 'merkez_kurum';
@@ -132,11 +134,10 @@ const AddBeneficiaryModal = ({ isOpen, onClose, user, onAdded }) => {
         kurum_id: activeKurumId,
         lat: formData.lat ? parseFloat(formData.lat) : null,
         lng: formData.lng ? parseFloat(formData.lng) : null,
-        son_teslimat: null,
       });
       onAdded();
       onClose();
-      setFormData({ ad_soyad: '', adres: '', telefon: '', ihtiyac_durumu: 'Bekliyor', lat: '', lng: '', notlar: '' });
+      setFormData({ fullName: '', address: '', phone: '', needStatus: 'Bekliyor', lat: '', lng: '', notes: '' });
     } catch (err) {
       console.error(err);
       alert('İhtiyaç sahibi eklenirken hata: ' + err.message);
@@ -161,16 +162,16 @@ const AddBeneficiaryModal = ({ isOpen, onClose, user, onAdded }) => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-surface-700">Ad Soyad *</label>
-              <input value={formData.ad_soyad} onChange={e => setFormData({...formData, ad_soyad: e.target.value})} type="text" placeholder="Ahmet Yılmaz" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+              <input value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} type="text" placeholder="Ahmet Yılmaz" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
             </div>
             <div className="space-y-1.5 col-span-2 sm:col-span-1">
               <label className="block text-sm font-medium text-surface-700">Telefon</label>
-              <input value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} type="tel" placeholder="0532 111 2233" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+              <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} type="tel" placeholder="0532 111 2233" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
             </div>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-surface-700">Adres</label>
-            <input value={formData.adres} onChange={e => setFormData({...formData, adres: e.target.value})} type="text" placeholder="Mahalle, Cadde, İl/İlçe" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
+            <input value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} type="text" placeholder="Mahalle, Cadde, İl/İlçe" className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -184,7 +185,7 @@ const AddBeneficiaryModal = ({ isOpen, onClose, user, onAdded }) => {
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-surface-700">İhtiyaç Durumu</label>
-            <select value={formData.ihtiyac_durumu} onChange={e => setFormData({...formData, ihtiyac_durumu: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+            <select value={formData.needStatus} onChange={e => setFormData({...formData, needStatus: e.target.value})} className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
               <option value="Bekliyor">Bekliyor</option>
               <option value="Acil">Acil</option>
               <option value="Devam Ediyor">Devam Ediyor</option>
@@ -193,7 +194,7 @@ const AddBeneficiaryModal = ({ isOpen, onClose, user, onAdded }) => {
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-surface-700">Notlar</label>
-            <textarea value={formData.notlar} onChange={e => setFormData({...formData, notlar: e.target.value})} rows="2" placeholder="Ek bilgi..." className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none" />
+            <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} rows="2" placeholder="Ek bilgi..." className="w-full px-3.5 py-2.5 rounded-xl border border-surface-300 text-sm bg-white text-surface-800 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none" />
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-100">
@@ -237,6 +238,19 @@ const BeneficiariesPage = () => {
   useEffect(() => {
     fetchData();
   }, [user]);
+
+  const handleDelete = async (id, name) => {
+    const confirmed = window.confirm(`"${name}" isimli kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`);
+    if (confirmed) {
+      try {
+        await deleteBeneficiary(id);
+        fetchData();
+      } catch (error) {
+        console.error("Kayıt silinirken hata:", error);
+        alert("Silme işlemi başarısız: " + error.message);
+      }
+    }
+  };
 
   const filteredData = (beneficiaries || []).filter((b) => {
     const sAd = b?.fullName || '';
@@ -386,12 +400,13 @@ const BeneficiariesPage = () => {
                   <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-4">İhtiyaç Durumu</th>
                   <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-4">Son Teslimat</th>
                   <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-4">Notlar</th>
+                  <th className="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-4">İşlem</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100">
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center">
+                    <td colSpan="7" className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <svg className="w-12 h-12 text-surface-300" fill="none" viewBox="0 0 24 24" strokeWidth="1" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -417,6 +432,17 @@ const BeneficiariesPage = () => {
                       <td className="px-6 py-4"><StatusBadge durum={b?.needStatus || 'Bekliyor'} /></td>
                       <td className="px-6 py-4 text-sm text-surface-500">{b?.son_teslimat || '—'}</td>
                       <td className="px-6 py-4 text-sm text-surface-500 max-w-[150px] truncate">{b?.notes || '—'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => handleDelete(b.id, b?.fullName || 'İsimsiz Kayıt')} 
+                          className="p-1.5 rounded-lg text-surface-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Sil"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
